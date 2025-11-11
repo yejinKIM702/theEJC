@@ -1,0 +1,95 @@
+﻿전표 생성 시나리오,상태 조건,전표 생성 로직,금액,에러 핸들링
+정상 배송 + 반품 미요청,"SO.status=DELIVERED AND
+RETURN.status NOT EXISTS OR
+RETURN.status IN [REJECTED] AND
+revenue_due_dt <= CURRENT_DATE","배치 프로세스:
+IF revenue_due_dt <= CURRENT_DATE
+  AND NOT EXISTS (RETURN.REQUESTED OR UNDER_REVIEW)
+THEN
+  CREATE JE1: Dr 1050 / Cr 4010 (매출환입)
+  CREATE JE2: Dr 4010 / Cr 1050 (환불액)
+  CREATE JE3: Dr 1060 / Cr 2040 (부가세환입)","ORDER_AMOUNT = 100,000
+TAX = 10,000
+TOTAL = 110,000","✓ 배치 중복 실행 방지
+✓ 반품 상태 전체 확인
+✓ 10일 초과 조건 검증"
+정상 배송 + 정상반품 승인,"SO.status=DELIVERED AND
+RETURN.status=APPROVED AND
+RETURN.type=NORMAL","RETURN.APPROVED 트리거:
+IF RETURN.type = NORMAL
+THEN
+  CREATE JE1: Dr 4020 / Cr 1050 (매출환입)
+  CREATE JE2: Dr 1060 / Cr 2040 (부가세환입)
+  CREATE JE3: Dr 1020 / Cr 5010 (재고복구)
+  CREATE JE4: Dr 6020 / Cr 1050 (반품운송료)
+END IF","RETURN_AMT = 100,000
+TAX_REFUND = 10,000
+SHIPPING_FEE = 5,000
+INV_COST = 80,000
+TOTAL = 195,000","✓ 반품 상태 확인
+✓ 부가세 계산 검증
+✓ 재고 가용성 확인"
+정상 배송 + 하자반품 승인 + 폐기,"SO.status=DELIVERED AND
+RETURN.status=APPROVED AND
+RETURN.type=DEFECT AND
+QC.result=DEFECT_CONFIRMED AND
+QC.restock_yn=N","QC.result = DEFECT_CONFIRMED 트리거:
+IF RETURN.type = DEFECT AND restock_yn = N
+THEN
+  CREATE JE1: Dr 4020 / Cr 1050 (매출환입)
+  CREATE JE2: Dr 1060 / Cr 2040 (부가세환입)
+  CREATE JE3: Dr 6010 / Cr 5010 (손실 인식)
+END IF","RETURN_AMT = 100,000
+TAX_REFUND = 10,000
+LOSS = 80,000 (원가)
+TOTAL = 190,000","✓ QC 결과 확인
+✓ 폐기 여부 검증
+✓ 손실금액 계산"
+정상 배송 + 하자반품 승인 + 재고복구,"SO.status=DELIVERED AND
+RETURN.status=APPROVED AND
+RETURN.type=DEFECT AND
+QC.result=DEFECT_CONFIRMED AND
+QC.restock_yn=Y","QC.result = DEFECT_CONFIRMED 트리거:
+IF RETURN.type = DEFECT AND restock_yn = Y
+THEN
+  LET loss_ratio = QC.damage_ratio (%) -- 기본 50%
+  LET restock_cost = INVENTORY_COST × (1 - loss_ratio)
+  CREATE JE1: Dr 4020 / Cr 1050 (매출환입)
+  CREATE JE2: Dr 1060 / Cr 2040 (부가세환입)
+  CREATE JE3: Dr 1030 / Cr 5010 (평가절하 재고 복구)
+  CREATE JE4: Dr 6010 / Cr 5010 (손실금액 인식)
+END IF","RETURN_AMT = 100,000
+TAX_REFUND = 10,000
+RESTOCK_COST = 50,000 (50% 평가절하)
+LOSS = 30,000 (차액)
+TOTAL = 190,000","✓ QC 결과 확인
+✓ 평가절하율 검증(기본 50%)
+✓ 재고 복구 가능성 확인"
+배송 + 반품거부,"SO.status=DELIVERED AND
+RETURN.status=REJECTED","RETURN.REJECTED 트리거:
+IF RETURN.status = REJECTED
+THEN
+  -- 추가 회계처리 없음
+  -- 기존 매출 유지 상태
+  UPDATE SO.status = COMPLETED
+END IF","추가 금액 없음
+(매출 유지)","✓ 반품 거절 사유 기록
+✓ 고객 통보 로그"
+배송 + 교환 승인,"SO.status=DELIVERED AND
+RETURN.status=APPROVED AND
+RETURN.type=EXCHANGE","RETURN.type = EXCHANGE 트리거:
+IF RETURN.type = EXCHANGE
+THEN
+  -- 기존 주문 취소
+  CREATE JE1: Dr 4020 / Cr 1050 (기존 매출환입)
+  CREATE JE2: Dr 1020 / Cr 5010 (기존 상품 반품)
+  
+  -- 신규 주문 생성
+  CREATE JE3: Dr 1050 / Cr 4010 (신규 매출)
+  CREATE JE4: Dr 5010 / Cr 1020 (신규 상품 원가)
+END IF","CANCEL_AMT = 100,000
+NEW_ORDER_AMT = 100,000
+RESTOCK_COST = 80,000
+NET = 0","✓ 기존/신규 주문 동시 처리
+✓ 재고 교체 검증
+✓ 중복 환불 방지"

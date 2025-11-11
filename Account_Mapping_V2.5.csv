@@ -1,0 +1,21 @@
+﻿계정 코드,계정 명칭,계정 유형,Dr/Cr,거래 트리거,금액 산출식,시스템 관리,부가세 처리,ERP 매핑
+1010,보통예금,Asset,Dr,"PAYMENT_CONFIRMED, REFUND",ORDER_AMOUNT,자동 생성,포함,AR: Bank Account
+1020,상품,Asset,Dr,"RETURN_APPROVED(NORMAL), RESTOCK, EXCHANGE",INVENTORY_COST × QUANTITY,자동 생성,-,AR: Inventory
+1030,상품(평가절하),Asset,Dr,"RETURN_APPROVED(DEFECT, RESTOCK)",INVENTORY_COST × QUANTITY × 50%,자동 생성,-,AR: Inventory (Sub-account)
+1040,미청구수익,Asset,Dr,DELIVERED(미청구 매출),ORDER_AMOUNT,자동 생성,미처리(10일 대기),AR: Deferred Revenue
+1050,미지급금(고객환불),Asset,Dr,REFUND_REQUEST,ORDER_AMOUNT (Cr로 음수),자동 생성,-,AP: Customer Refund Payable
+1060,부가세예수금,Asset,Dr,RETURN_APPROVED(모든 유형),TAX_AMOUNT,자동 생성,환급 권리,AP: VAT Receivable
+1070,외상매출금,Asset,Dr,INVOICE_ISSUED(외상),ORDER_AMOUNT,수동 생성,별도 세금계산서,AR: Trade Receivable
+2010,선수금,Liability,Cr,PAYMENT_CONFIRMED(선수금),ORDER_AMOUNT,자동 생성,-,AP: Advance Payment
+2020,선수금(반품기간),Liability,Cr,DELIVERED(선수금 대기),ORDER_AMOUNT (10일 대기 상태),자동 생성,-,AP: Advance Payment (Waiting)
+2030,미지급금,Liability,Cr,"REFUND, VENDOR_PAYMENT",REFUND_AMOUNT (음수),자동 생성,-,AP: Accounts Payable
+2040,부가세납부금,Liability,Cr,RETURN_APPROVED(부가세 환입),TAX_AMOUNT (음수),자동 생성,감소(환급),AP: VAT Payable
+4010,매출,Revenue,Cr,"REVENUE_CONFIRMED, RETURN_REJECTED",ORDER_AMOUNT,자동 생성,포함,Revenue: Sales
+4020,매출환입,Revenue,Dr,RETURN_APPROVED(매출 환입),ORDER_AMOUNT (음수),자동 생성,-,Revenue: Sales Return
+4030,미청구매출,Revenue,Cr,DELIVERED(미청구),ORDER_AMOUNT,자동 생성,-,Revenue: Unrecognized Revenue
+4040,수익(배송),Revenue,Cr,SHIPPING_CHARGED,SHIPPING_FEE,수동 생성,포함(선택),Revenue: Shipping Revenue
+4050,환입수익,Revenue,Dr,RETURN_APPROVED(환입 수익 차감),REFUND_AMOUNT (음수),수동 생성,-,Revenue: Return Revenue
+5010,매출원가,COGS,Cr,"REVENUE_CONFIRMED, RETURN_APPROVED",INVENTORY_COST × QUANTITY,자동 생성,-,COGS: Cost of Goods Sold
+5020,매출원가(반품),COGS,Dr,RETURN_APPROVED(원가 복구),INVENTORY_COST × QUANTITY,자동 생성,-,COGS: Return COGS
+6010,재고평가손실,Expense,Dr,"RETURN_APPROVED(DEFECT, SCRAP)",INVENTORY_COST × QUANTITY,자동 생성,-,Expense: Inventory Loss
+6020,반품운송료,Expense,Dr,RETURN_APPROVED(배송비 부담),RETURN_SHIPPING_COST,수동 생성,-,Expense: Return Shipping
